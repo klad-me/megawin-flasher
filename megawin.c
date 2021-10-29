@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include <getopt.h>
 #include <string.h>
+#include <ctype.h>
 #include <hidapi/hidapi.h>
 
 
@@ -238,7 +239,21 @@ void usage(const char *argv0)
 	fprintf(stderr, "  -v / --verify             Verify after write\n");
 	fprintf(stderr, "  -a / --addr   <address>   Set base address (default=0)\n");
 	fprintf(stderr, "  -s / --size   <size>      Set size (default=file size|entire flash)\n");
-#warning TODO: fuse
+	fprintf(stderr, "  -f / --fuse   <fuse-list> Comma-separated fuse list\n");
+	fprintf(stderr, "\n");
+	fprintf(stderr, "Supported fuses:\n");
+	fprintf(stderr, "  HWBS   Run ISP on power on\n");
+	fprintf(stderr, "  HWBS2  Run ISP on power on & external reset\n");
+	fprintf(stderr, "  IAP=X  Set IAP size to 0k to 16k (in 0.5k steps)\n");
+	fprintf(stderr, "  ISP=X  Set ISP size to 0k to 7.5k (in 0.5k steps)\n");
+	fprintf(stderr, "  BOD1=X Set BOD1 voltage (2.0, 2.4, 3.7, 4.2)\n");
+	fprintf(stderr, "  BO0REO Trigger reset on BOD0\n");
+	fprintf(stderr, "  BO1REO Trigger reset on BOD1\n");
+	fprintf(stderr, "  WRENO  Set WDTCR.WREN (enable WDT reset)\n");
+	fprintf(stderr, "  NSWDT  Set WDTCR.NSW (enable WDT in power down mode)\n");
+	fprintf(stderr, "  HWENW  Enable WDT\n");
+	fprintf(stderr, "  WDSFWP Write-protect WDT registers\n");
+#warning TODO: wdt values (datasheet p.287)
 }
 
 
@@ -248,6 +263,8 @@ int main(int argc, char **argv)
 	FILE *Fwrite=0, *Fread=0;
 	uint8_t erase=0, verify=0;
 	uint16_t addr=0, size=16384;
+	uint8_t fuse[]={ 0x08, 0xe3, 0xff, 0x00, 0x68, 0xe1, 0xff, 0xff, 0x05};
+	int iap_size=0, isp_size=0;
 	
 	if (argc < 2)
 	{
@@ -263,10 +280,11 @@ int main(int argc, char **argv)
 		{ "verify",		no_argument,			0,		'v' },
 		{ "addr",		required_argument,		0,		'a' },
 		{ "size",		required_argument,		0,		's' },
+		{ "fuse",		required_argument,		0,		'f' },
 		{ 0 }
 	};
 	int opt;
-	while ( (opt=getopt_long(argc, argv, "e-w:r:v-a:s:", opts, 0)) > 0)
+	while ( (opt=getopt_long(argc, argv, "e-w:r:v-a:s:f:", opts, 0)) > 0)
 	{
 		switch (opt)
 		{
@@ -308,9 +326,102 @@ int main(int argc, char **argv)
 					size=atoi(optarg);
 				break;
 			
+			case 'f':
+				{
+					char *ss=optarg;
+					uint8_t ok=1;
+					while (*ss)
+					{
+						// Пропускаем пробелы
+						while (isspace(*ss)) ss++;
+						if (! *ss) break;
+						
+						// Получаем название и значение
+						if (! isalnum(*ss))
+						{
+							ok=0;
+							break;
+						}
+						const char *name=ss, *value;
+						while (isalnum(*ss)) ss++;
+						if ((*ss) == '=')
+						{
+							// Есть значение
+							(*ss++)=0;
+							value=ss;
+							while ( (*ss) && ((*ss) != ',') && (! isspace(*ss)) ) ss++;
+							if (*ss) (*ss++)=0;
+						} else
+						{
+							// Нет значения
+							if (*ss) (*ss++)=0;
+							value="";
+						}
+						
+						// Обрабатываем опцию
+						if (! strcasecmp(name, "HWBS")) fuse[0]&=~0x08; else
+						if (! strcasecmp(name, "HWBS2")) fuse[1]&=~0x20; else
+						if (! strcasecmp(name, "BOD1"))
+						{
+							uint8_t bits;
+							switch ( (int)(atof(value)*10) )
+							{
+								case 20:	bits=0; break;
+								case 24:	bits=1; break;
+								case 37:	bits=2; break;
+								case 42:	bits=3; break;
+								default:
+									fprintf(stderr, "Incorrect BOD1 value\n");
+									return -1;
+							}
+							fuse[1]=(fuse[1] & ~0x03) | bits;
+						} else
+						if (! strcasecmp(name, "BO0REO")) fuse[1]&=~0x40; else
+						if (! strcasecmp(name, "BO1REO")) fuse[1]&=~0x80; else
+						if (! strcasecmp(name, "WRENO")) fuse[2]&=~0x10; else
+						if (! strcasecmp(name, "HWENW")) fuse[2]&=~0x20; else
+						if (! strcasecmp(name, "NSWDT")) fuse[2]&=~0x40; else
+						if (! strcasecmp(name, "WDSFWP")) fuse[2]&=~0x80; else
+						if (! strcasecmp(name, "IAP")) iap_size=(int)(atof(value)*10); else
+						if (! strcasecmp(name, "ISP")) isp_size=(int)(atof(value)*10); else
+						{
+							fprintf(stderr, "Incorrect fuse '%s'\n", name);
+							return -1;
+						}
+					}
+					
+					if (! ok)
+					{
+						fprintf(stderr, "Incorrect fuse list !\n");
+						return -1;
+					}
+					
+					if ( (isp_size < 0) || (isp_size > 75) || ((isp_size%5) != 0) )
+					{
+						fprintf(stderr, "Incorrect ISP size\n");
+						return -1;
+					}
+					
+					if ( (iap_size < 0) || (iap_size > 160) || ((iap_size%5) != 0) || (isp_size+iap_size > 160) )
+					{
+						fprintf(stderr, "Incorrect IAP size\n");
+						return -1;
+					}
+					
+					const uint8_t isp_tab[]={0xf6, 0xd6, 0xb6, 0x96, 0x76, 0x56, 0x36, 0x16, 0xf4, 0xd4, 0xb4, 0x94, 0x74, 0x54, 0x34, 0x14};	// 0-7.5k
+					const uint8_t iap_tab[]={0x41, 0x3f, 0x3d, 0x3b, 0x39, 0x37, 0x35, 0x33, 0x31, 0x2f, 0x2d, 0x2b, 0x29, 0x27, 0x25, 0x23,
+											 0x21, 0x1f, 0x1d, 0x1b, 0x19, 0x17, 0x15, 0x13, 0x11, 0x0f, 0x0d, 0x0b, 0x09, 0x07, 0x05, 0x03, 0x01};	// 0-16k
+					
+					// Получаем индексы к таблице
+					isp_size/=5;
+					iap_size/=5;
+					fuse[0]|=isp_tab[isp_size];
+					fuse[3]|=iap_tab[isp_size+iap_size];
+				}
+				break;
+			
 			case '?':
 			default:
-				printf("opt='%c'\n", opt);
 				usage(argv[0]);
 				return -1;
 		}
@@ -373,7 +484,6 @@ int main(int argc, char **argv)
 	
 	// Записываем fuse
 	printf("Writing FUSE...\n");
-	static const uint8_t fuse[]={ 0x1c, 0xe3, 0xff, 0x01, 0x68, 0xe1, 0xff, 0xff, 0x05};
 	if (! writeFuse(fuse)) goto done;
 	
 	// Записываем флэш
