@@ -113,11 +113,15 @@ uint8_t unknown1(void)
 	static const uint8_t answer[]={ 0x03, 0x51, 0xD0, 0x05 };
 	uint8_t data[8];
 	
-	if ( (qa(query, sizeof(query), data, sizeof(data)) != sizeof(answer)) ||
+	uint8_t len=qa(query, sizeof(query), data, sizeof(data));
+	if ( (len != sizeof(answer)) ||
 		 (memcmp(data, answer, sizeof(answer)) != 0) )
 	{
-		fprintf(stderr, "unknown1 error\n");
-		return 0;
+		fprintf(stderr, "unknown1 error:");
+		for (int i=0; i<len; i++)
+			fprintf(stderr, " %02X", data[i]);
+		fprintf(stderr, "\n");
+		//return 0;
 	}
 	
 	return 1;
@@ -239,7 +243,7 @@ void usage(const char *argv0)
 	fprintf(stderr, "  -v / --verify             Verify after write\n");
 	fprintf(stderr, "  -a / --addr   <address>   Set base address (default=0)\n");
 	fprintf(stderr, "  -s / --size   <size>      Set size (default=file size|entire flash)\n");
-	fprintf(stderr, "  -f / --fuse   <fuse-list> Comma-separated fuse list\n");
+	fprintf(stderr, "  -f / --fuse   <fuse-list> Comma-separated fuse list (or '')\n");
 	fprintf(stderr, "\n");
 	fprintf(stderr, "Supported fuses:\n");
 	fprintf(stderr, "  HWBS   Run ISP on power on\n");
@@ -265,6 +269,7 @@ int main(int argc, char **argv)
 	uint16_t addr=0, size=16384;
 	uint8_t fuse[]={ 0x08, 0xe3, 0xff, 0x00, 0x68, 0xe1, 0xff, 0xff, 0x05};
 	int iap_size=0, isp_size=0;
+	uint8_t write_fuse=0;
 	
 	if (argc < 2)
 	{
@@ -408,15 +413,7 @@ int main(int argc, char **argv)
 						return -1;
 					}
 					
-					const uint8_t isp_tab[]={0xf6, 0xd6, 0xb6, 0x96, 0x76, 0x56, 0x36, 0x16, 0xf4, 0xd4, 0xb4, 0x94, 0x74, 0x54, 0x34, 0x14};	// 0-7.5k
-					const uint8_t iap_tab[]={0x41, 0x3f, 0x3d, 0x3b, 0x39, 0x37, 0x35, 0x33, 0x31, 0x2f, 0x2d, 0x2b, 0x29, 0x27, 0x25, 0x23,
-											 0x21, 0x1f, 0x1d, 0x1b, 0x19, 0x17, 0x15, 0x13, 0x11, 0x0f, 0x0d, 0x0b, 0x09, 0x07, 0x05, 0x03, 0x01};	// 0-16k
-					
-					// Получаем индексы к таблице
-					isp_size/=5;
-					iap_size/=5;
-					fuse[0]|=isp_tab[isp_size];
-					fuse[3]|=iap_tab[isp_size+iap_size];
+					write_fuse=1;
 				}
 				break;
 			
@@ -483,8 +480,20 @@ int main(int argc, char **argv)
 	}
 	
 	// Записываем fuse
-	printf("Writing FUSE...\n");
-	if (! writeFuse(fuse)) goto done;
+	if (write_fuse)
+	{
+		const uint8_t isp_tab[]={0xf6, 0xd6, 0xb6, 0x96, 0x76, 0x56, 0x36, 0x16, 0xf4, 0xd4, 0xb4, 0x94, 0x74, 0x54, 0x34, 0x14};	// 0-7.5k
+		const uint8_t iap_tab[]={0x41, 0x3f, 0x3d, 0x3b, 0x39, 0x37, 0x35, 0x33, 0x31, 0x2f, 0x2d, 0x2b, 0x29, 0x27, 0x25, 0x23,
+								 0x21, 0x1f, 0x1d, 0x1b, 0x19, 0x17, 0x15, 0x13, 0x11, 0x0f, 0x0d, 0x0b, 0x09, 0x07, 0x05, 0x03, 0x01};	// 0-16k
+		
+		isp_size/=5;
+		iap_size/=5;
+		fuse[0]|=isp_tab[isp_size];
+		fuse[3]|=iap_tab[isp_size+iap_size];
+					
+		printf("Writing FUSE...\n");
+		if (! writeFuse(fuse)) goto done;
+	}
 	
 	// Записываем флэш
 	if (Fwrite)
