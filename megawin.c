@@ -266,7 +266,7 @@ int main(int argc, char **argv)
 	int ret=-1;
 	FILE *Fwrite=0, *Fread=0;
 	uint8_t erase=0, verify=0;
-	uint16_t addr=0, size=16384;
+	uint16_t addr=0, size=0;
 	uint8_t fuse[]={ 0x08, 0xe3, 0xff, 0x00, 0x68, 0xe1, 0xff, 0xff, 0x05};
 	int iap_size=0, isp_size=0;
 	uint8_t write_fuse=0;
@@ -442,6 +442,8 @@ int main(int argc, char **argv)
 		fprintf(stderr, "Bad address\n");
 		return -1;
 	}
+	
+	if (size == 0) size=16384-addr;
 	
 	if ( (size == 0) || (addr+size > 16384) )
 	{
