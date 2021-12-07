@@ -55,7 +55,7 @@ int qa(const uint8_t *query, uint8_t query_len, uint8_t *answer, uint8_t answer_
 }
 
 
-uint8_t checkAdapter(void)
+/*uint8_t checkAdapter(void)
 {
 	static const uint8_t query[] ={ 0x0C, 0xA8, 0x00, 0x00, 0x00, 0x00, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
 	static const uint8_t answer[]={ 0x03, 0x02, 0x42, 0x01 };
@@ -69,7 +69,7 @@ uint8_t checkAdapter(void)
 	}
 	
 	return 1;
-}
+}*/
 
 
 uint8_t enterICE(void)
@@ -106,22 +106,22 @@ uint8_t exitICE(void)
 }
 
 
-// Вероятно - определение типа процессора
-uint8_t unknown1(void)
+uint8_t checkCPU(void)
 {
 	static const uint8_t query[] ={ 0x0C, 0x93, 0x00, 0x00, 0x00, 0x00, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
-	static const uint8_t answer[]={ 0x03, 0x51, 0xD0, 0x05 };
 	uint8_t data[8];
 	
 	uint8_t len=qa(query, sizeof(query), data, sizeof(data));
-	if ( (len != sizeof(answer)) ||
-		 (memcmp(data, answer, sizeof(answer)) != 0) )
+	if ( (len != 4) ||
+		 (data[0] != 0x03) ||
+		 (data[1] != 0x51) ||
+		 (data[2] != 0xD0) )
 	{
-		fprintf(stderr, "unknown1 error:");
+		fprintf(stderr, "checkCPU error:");
 		for (int i=0; i<len; i++)
 			fprintf(stderr, " %02X", data[i]);
 		fprintf(stderr, "\n");
-		//return 0;
+		return 0;
 	}
 	
 	return 1;
@@ -468,11 +468,11 @@ int main(int argc, char **argv)
 	
 	// Переходим в режим программирования
 	printf("Entering programming mode...\n");
-	if (! checkAdapter()) goto done;
+	//if (! checkAdapter()) goto done;
 	if (! enterICE()) goto done;
 	
 	// Возможно, проверка типа чипа
-	if (! unknown1()) goto done;
+	if (! checkCPU()) goto done;
 	
 	// Стираем флэш
 	if (erase)
