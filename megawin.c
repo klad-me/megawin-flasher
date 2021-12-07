@@ -26,9 +26,9 @@ int qa(const uint8_t *query, uint8_t query_len, uint8_t *answer, uint8_t answer_
 		printf("\n");
 #endif
 		
-		if (hid_write(handle, query, query_len) != query_len)
+		if (hid_write(handle, query, query_len) < query_len)
 		{
-			fprintf(stderr, "hid_write failed");
+			fprintf(stderr, "hid_write failed\n");
 			return -1;
 		}
 	}
@@ -78,7 +78,7 @@ uint8_t enterICE(void)
 	static const uint8_t answer[]={ 0x01, 0x41 };
 	uint8_t data[8];
 	
-	if ( (qa(query, sizeof(query), data, sizeof(data)) != sizeof(answer)) ||
+	if ( (qa(query, sizeof(query), data, sizeof(data)) < sizeof(answer)) ||
 		 (memcmp(data, answer, sizeof(answer)) != 0) )
 	{
 		fprintf(stderr, "enterICE error\n");
@@ -95,7 +95,7 @@ uint8_t exitICE(void)
 	static const uint8_t answer[]={ 0x01, 0x41 };
 	uint8_t data[8];
 	
-	if ( (qa(query, sizeof(query), data, sizeof(data)) != sizeof(answer)) ||
+	if ( (qa(query, sizeof(query), data, sizeof(data)) < sizeof(answer)) ||
 		 (memcmp(data, answer, sizeof(answer)) != 0) )
 	{
 		fprintf(stderr, "exitICE error\n");
@@ -112,7 +112,7 @@ uint8_t checkCPU(void)
 	uint8_t data[8];
 	
 	uint8_t len=qa(query, sizeof(query), data, sizeof(data));
-	if ( (len != 4) ||
+	if ( (len < 4) ||
 		 (data[0] != 0x03) ||
 		 (data[1] != 0x51) ||
 		 (data[2] != 0xD0) )
@@ -134,7 +134,7 @@ uint8_t eraseFlash(void)
 	static const uint8_t answer[]={ 0x01, 0x41 };
 	uint8_t data[8];
 	
-	if ( (qa(query, sizeof(query), data, sizeof(data)) != sizeof(answer)) ||
+	if ( (qa(query, sizeof(query), data, sizeof(data)) < sizeof(answer)) ||
 		 (memcmp(data, answer, sizeof(answer)) != 0) )
 	{
 		fprintf(stderr, "eraseFlash error\n");
@@ -154,7 +154,7 @@ uint8_t writeFuse(const uint8_t *fuse)
 	memcpy(query+12, fuse, 9);
 	query[sizeof(query)-1]=0;
 	
-	if ( (qa(query, sizeof(query), data, sizeof(data)) != sizeof(answer)) ||
+	if ( (qa(query, sizeof(query), data, sizeof(data)) < sizeof(answer)) ||
 		 (memcmp(data, answer, sizeof(answer)) != 0) )
 	{
 		fprintf(stderr, "writeFuse error\n");
@@ -186,12 +186,12 @@ uint8_t readFlash(uint32_t addr, uint8_t *data, uint32_t size)
 			fprintf(stderr, "readFlash answer error\n");
 			return 0;
 		}
-		if (len != pkt[0]+1)
+		if (len < pkt[0]+1)
 		{
 			fprintf(stderr, "readFlash answer data error\n");
 			return 0;
 		}
-		len--;
+		len=pkt[0];
 		
 		if (len > size) len=size;
 		memcpy(data, pkt+1, len);
@@ -218,7 +218,7 @@ uint8_t writeFlash(uint32_t addr, const uint8_t *data, uint32_t size)
 		memcpy(query+6, &data_len, 4);
 		memcpy(query+12, data, data_len);
 		
-		if ( (qa(query, 12+data_len+1, pkt, sizeof(pkt)) != sizeof(answer)) ||
+		if ( (qa(query, 12+data_len+1, pkt, sizeof(pkt)) < sizeof(answer)) ||
 			 (memcmp(pkt, answer, sizeof(answer)) != 0) )
 		{
 			fprintf(stderr, "writeFlash answer error\n");
