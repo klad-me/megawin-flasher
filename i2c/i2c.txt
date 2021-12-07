@@ -1,0 +1,228 @@
+enterICE()
+==========
+
+- reset
+- wait 50ms
+
+- дергает линии 1.png
+
+- read	7F NAK
+
+- write	52 C0
+- write 54 80
+- write	52 C1
+- write 54 02
+
+- wait 1.3ms
+
+- write	52 C1
+- write 54 00
+
+- wait 137ms
+
+- write 52 C0
+- write 54 80
+
+- read	2B	00 00 03 00
+
+- write 52 C0
+- write 54 88
+
+- write 52 C2
+- write	54 80
+- write	52 C2
+- write 54 80
+- write 52 C2
+- write 54 80
+- write 52 C2
+- write 54 80
+- write 52 C2
+- write 54 80
+- write 52 C2
+- write 54 80
+
+- write 52 C0
+- write 54 8A
+
+- write 52 C1
+- write 54 01
+
+- wait 1.3ms
+
+- write 52 C1
+- write 54 00
+
+
+
+
+exitICE()
+=========
+
+I2C:
+
+- write	52 C1
+- write	52 01
+
+- wait 1ms
+
+- write 52 C1
+- write 54 03
+
+- wait 1.3ms
+
+- write 52 C1
+- write 54 01
+
+- wait 172ms
+
+- write 52 C1
+- write 54 00
+- write 52 C0
+- write 54 88
+
+- wait 80ms
+
+- дергает reset 2.png
+
+
+
+
+checkCPU()
+==========
+
+USB:
+0x03 0x51 0xD0 0x05
+     ^^^^^^^^^^^^^^
+
+I2C:
+- read	2D	51 D0 05
+
+
+
+
+
+readFlash()
+===========
+
+- write 42 00
+- write 52 C0
+- write 54 CA
+- write 40 00 00 00		<-- адрес L:M:H
+- write 42 F0
+- read	23	data		<-- 32 байта данных
+- write 42 00
+- write 52 С0
+- write 54 8A
+
+
+
+
+eraseFlash()
+============
+
+- write 52 C1
+- write 54 01
+
+- wait 1ms
+
+- write 42 00
+- write 52 C0
+- write 54 C2
+- read	2D	51 D0 05	<-- checkCPU()
+- write 42 86
+- write 42 87
+
+- wait 200ms
+
+- write 42 83
+
+- wait 110us
+
+- write 42 00
+- write 52 C1
+- write 54 03
+- write 52 C1
+- write 54 03
+
+- wait 1ms
+
+- write 52 C1
+- write 54 01
+
+- wait 135ms
+
+- write 40 01 42 00
+- write 44 EF
+- write 42 88 89 C9 C1
+- write 42 00
+- write 52 C1
+- write 54 04
+- write 52 C1
+- write 54 03
+
+- wait 1ms
+
+- write 52 C1
+- write 54 01
+
+- wait 135ms
+
+- write 52 C0
+- write 54 82
+- write 52 C1
+- write 54 00
+
+
+
+
+writeFuse()
+===========
+
+- write 42 00
+- write 52 C0
+- write 54 C2
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Блок
+
+- write 40 00 42 00	<-- адрес (от 0x004200 до 0x004208)
+- write 44 FE		<-- данное (FE)
+- write 42 88 89 C9 C1
+- write 42 00
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- write 52 C0
+- write 54 82
+
+
+
+
+
+
+writeFlash()
+============
+
+block:
+
+- write 42 00
+- write 52 C0
+- write 54 C2
+- write 44 02		<-- первый байт данных
+- write 40 00 00 00	<-- адрес
+- write 43
+	00 59 32 00 00 00 00  00 00 00 32 00 00 00 00 		<-- данные (48 байт)
+ 00 00 00 32 00 00 00 00  00 00 00 32 00 00 00 00 
+ 00 00 00 32 00 00 00 00  00 00 00 32 00 00 00 00 FF
+- write 52 C0
+- write 54 C2
+
+- wait 2ms
+
+...
+
+
+end:
+
+- write 54 82
