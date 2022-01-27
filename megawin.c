@@ -113,9 +113,9 @@ uint8_t checkCPU(void)
 	
 	uint8_t len=qa(query, sizeof(query), data, sizeof(data));
 	if ( (len < 4) ||
-		 (data[0] != 0x03) ||
+		 (data[0] != 0x03) /*||
 		 (data[1] != 0x51) ||
-		 (data[2] != 0xD0) )
+		 (data[2] != 0xD0)*/ )
 	{
 		fprintf(stderr, "checkCPU error:");
 		for (int i=0; i<len; i++)

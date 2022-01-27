@@ -1,6 +1,7 @@
 CFLAGS=-Wall
 LDFLAGS=-lhidapi
 CC=i686-w64-mingw32-gcc
+STRIP=i686-w64-mingw32-strip
 
 OBJ=megawin.o
 
@@ -13,7 +14,7 @@ clean:
 	rm -f megawin.exe $(OBJ)
 
 megawin.exe: $(OBJ)
-	$(CC) $(CFLAGS) -o $@ $< $(LDFLAGS)
+	$(CC) $(CFLAGS) -o $@ $< $(LDFLAGS) && $(STRIP) $@
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c -o $@ $<
