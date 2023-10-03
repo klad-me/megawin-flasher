@@ -10,6 +10,10 @@
 //#define DUMP_PACKETS
 
 
+#define MEGAWIN_ICE_VID		0x0e6a
+#define MEGAWIN_ICE_PID		0x030a
+
+
 hid_device *handle;
 
 
@@ -237,6 +241,8 @@ uint8_t writeFlash(uint32_t addr, const uint8_t *data, uint32_t size)
 void usage(const char *argv0)
 {
 	fprintf(stderr, "Usage: %s [options]\n", argv0);
+	fprintf(stderr, "  -l / --list               Enumerate Megawin ICE devices (shows USB paths)\n");
+	fprintf(stderr, "  -d / --device <usb-path>  Use specific USB adapter (default - use first found)\n");
 	fprintf(stderr, "  -e / --erase              Erase flash\n");
 	fprintf(stderr, "  -w / --write  <file.bin>  Write flash (without erase !)\n");
 	fprintf(stderr, "  -r / --read   <file.bin>  Read flash\n");
@@ -265,12 +271,14 @@ int main(int argc, char **argv)
 {
 	int ret=-1;
 	FILE *Fwrite=0, *Fread=0;
-	uint8_t erase=0, verify=0;
+	uint8_t list=0, erase=0, verify=0;
 	uint16_t addr=0, size=0;
 	uint8_t fuse[]={ 0x08, 0xe3, 0xff, 0x00, 0x68, 0xe1, 0xff, 0xff, 0x05};
 	int iap_size=0, isp_size=0;
 	uint8_t write_fuse=0;
+	const char *usb_path=0;
 	
+	// Разбираем аргументы
 	if (argc < 2)
 	{
 		usage(argv[0]);
@@ -279,6 +287,8 @@ int main(int argc, char **argv)
 	
 	struct option opts[]=
 	{
+		{ "list",		no_argument,			0,		'l' },
+		{ "device",		required_argument,		0,		'd' },
 		{ "erase",		no_argument,			0,		'e' },
 		{ "write",		required_argument,		0,		'w' },
 		{ "read",		required_argument,		0,		'r' },
@@ -289,10 +299,18 @@ int main(int argc, char **argv)
 		{ 0 }
 	};
 	int opt;
-	while ( (opt=getopt_long(argc, argv, "e-w:r:v-a:s:f:", opts, 0)) > 0)
+	while ( (opt=getopt_long(argc, argv, "l-d:e-w:r:v-a:s:f:", opts, 0)) > 0)
 	{
 		switch (opt)
 		{
+			case 'l':
+				list=1;
+				break;
+			
+			case 'd':
+				usb_path=strdup(optarg);
+				break;
+			
 			case 'e':
 				erase=1;
 				break;
@@ -451,15 +469,41 @@ int main(int argc, char **argv)
 		return -1;
 	}
 	
-	
-	// Открываем устройство
+	// Инитим HID
 	if (hid_init() != 0)
 	{
 		fprintf(stderr, "hid_init failed\n");
 		return -1;
 	}
 	
-	handle = hid_open(0x0e6a, 0x030a, NULL);
+	// Выводим список устройств, если надо
+	if (list)
+	{
+		struct hid_device_info *list = hid_enumerate(MEGAWIN_ICE_VID, MEGAWIN_ICE_PID);
+		if (! list)
+		{
+			fprintf(stderr, "Megawin ICE not found !\n");
+			return -1;
+		}
+		
+		struct hid_device_info *l=list;
+		while (l)
+		{
+			printf("%s\n", l->path);
+			l=l->next;
+		}
+		
+		hid_free_enumeration(list);
+	}
+	
+	// Определяем, есть ли что делать
+	if ( (! erase) && (! Fwrite) && (! Fread) )
+		return 0;
+	
+	// Открываем устройство
+	if (usb_path)
+		handle = hid_open_path(usb_path); else
+		handle = hid_open(MEGAWIN_ICE_VID, MEGAWIN_ICE_PID, NULL);
 	if (! handle)
 	{
 		fprintf(stderr, "Megawin ICE not found !\n");
