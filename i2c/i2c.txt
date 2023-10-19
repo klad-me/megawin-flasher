@@ -1,56 +1,48 @@
 enterICE()
 ==========
 
-- reset
-- wait 50ms
-
-- дергает линии 1.png
-
-- read	7F NAK
-
-- write	52 C0
-- write 54 80
-- write	52 C1
-- write 54 02
-
-- wait 1.3ms
-
-- write	52 C1
-- write 54 00
-
-- wait 137ms
-
-- write 52 C0
-- write 54 80
-
-- read	2B	00 00 03 00
-
-- write 52 C0
-- write 54 88
-
-- write 52 C2
-- write	54 80
-- write	52 C2
-- write 54 80
-- write 52 C2
-- write 54 80
-- write 52 C2
-- write 54 80
-- write 52 C2
-- write 54 80
-- write 52 C2
-- write 54 80
-
-- write 52 C0
-- write 54 8A
-
-- write 52 C1
-- write 54 01
-
-- wait 1.3ms
-
-- write 52 C1
-- write 54 00
+- дергает RST быстро (частота = 12МГц) 160-310 раз (каждый раз по-разному), время - 33мкс
+- оставляет RST вверху
+- ждет 50мс
+- дергает SDA-SCL как на картинке enterICE-1.png (минимальная полка 167нс)
+- I2C:
+	read to 0x7F nak
+- дергает SDA-SCL как на картинке enterICE-2.png (минимальная полка 167нс)
+- I2C:
+	write to 0x52 ack data: 0xC0 
+	write to 0x54 ack data: 0x80 
+	write to 0x52 ack data: 0xC0 
+	write to 0x54 ack data: 0x82 
+	read to 0x2B ack data: 0x00 0x00 0xA2 0x00		<-- если не проца, то программатор эту операцию постоянно повторяет
+	write to 0x52 ack data: 0xC1 
+	write to 0x54 ack data: 0x02 
+	write to 0x52 ack data: 0xC1 
+	write to 0x54 ack data: 0x03 
+- ждет 1мс
+- I2C:
+	write to 0x52 ack data: 0xC1 
+	write to 0x54 ack data: 0x01 
+- ждет 100мс
+- I2C:
+	write to 0x52 ack data: 0xC0 
+	write to 0x54 ack data: 0x82 
+	read to 0x2B ack data: 0x00 0x00 0xA2 0x00
+	write to 0x52 ack data: 0xC2 
+	write to 0x54 ack data: 0x80 
+	write to 0x52 ack data: 0xC2 
+	write to 0x54 ack data: 0x80 
+	write to 0x52 ack data: 0xC2 
+	write to 0x54 ack data: 0x80 
+	write to 0x52 ack data: 0xC2 
+	write to 0x54 ack data: 0x80 
+	write to 0x52 ack data: 0xC2 
+	write to 0x54 ack data: 0x80 
+	write to 0x52 ack data: 0xC2 
+	write to 0x54 ack data: 0x80 
+	write to 0x52 ack data: 0xC0 
+	write to 0x54 ack data: 0x82 
+	write to 0x52 ack data: 0xC1 
+	write to 0x54 ack data: 0x00 
 
 
 
@@ -58,31 +50,28 @@ enterICE()
 exitICE()
 =========
 
-I2C:
-
-- write	52 C1
-- write	52 01
-
-- wait 1ms
-
-- write 52 C1
-- write 54 03
-
-- wait 1.3ms
-
-- write 52 C1
-- write 54 01
-
-- wait 172ms
-
-- write 52 C1
-- write 54 00
-- write 52 C0
-- write 54 88
-
-- wait 80ms
-
-- дергает reset 2.png
+- I2C:
+	write to 0x52 ack data: 0xC1 
+	write to 0x54 ack data: 0x01 
+- ждет 1мс
+- I2C:
+	write to 0x52 ack data: 0xC1 
+	write to 0x54 ack data: 0x03 
+	write to 0x52 ack data: 0xC1 
+	write to 0x54 ack data: 0x03 
+- ждет 1мс
+- I2C:
+	write to 0x52 ack data: 0xC1 
+	write to 0x54 ack data: 0x01 
+- ждет 135мс
+- I2C:
+	write to 0x52 ack data: 0xC1 
+	write to 0x54 ack data: 0x00 
+	write to 0x52 ack data: 0xC0 
+	write to 0x54 ack data: 0x80 
+- ждет 40мс
+- дергает RST 27k-28k раз за время 7-8мс
+- оставляет RST внизу
 
 
 
@@ -90,13 +79,8 @@ I2C:
 checkCPU()
 ==========
 
-USB:
-0x03 0x51 0xD0 0x05
-     ^^^^^^^^^^^^^^
-
-I2C:
-- read	2D	51 D0 05
-
+- I2C:
+	read to 0x2D ack data: 0x51 0xD0 0x05
 
 
 
@@ -104,99 +88,17 @@ I2C:
 readFlash()
 ===========
 
-- write 42 00
-- write 52 C0
-- write 54 CA
-- write 40 00 00 00		<-- адрес L:M:H
-- write 42 F0
-- read	23	data		<-- 32 байта данных
-- write 42 00
-- write 52 С0
-- write 54 8A
-
-
-
-
-eraseFlash()
-============
-
-- write 52 C1
-- write 54 01
-
-- wait 1ms
-
-- write 42 00
-- write 52 C0
-- write 54 C2
-- read	2D	51 D0 05	<-- checkCPU()
-- write 42 86
-- write 42 87
-
-- wait 200ms
-
-- write 42 83
-
-- wait 110us
-
-- write 42 00
-- write 52 C1
-- write 54 03
-- write 52 C1
-- write 54 03
-
-- wait 1ms
-
-- write 52 C1
-- write 54 01
-
-- wait 135ms
-
-- write 40 01 42 00
-- write 44 EF
-- write 42 88 89 C9 C1
-- write 42 00
-- write 52 C1
-- write 54 04
-- write 52 C1
-- write 54 03
-
-- wait 1ms
-
-- write 52 C1
-- write 54 01
-
-- wait 135ms
-
-- write 52 C0
-- write 54 82
-- write 52 C1
-- write 54 00
-
-
-
-
-writeFuse()
-===========
-
-- write 42 00
-- write 52 C0
-- write 54 C2
-
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Блок
-
-- write 40 00 42 00	<-- адрес (от 0x004200 до 0x004208)
-- write 44 FE		<-- данное (FE)
-- write 42 88 89 C9 C1
-- write 42 00
-
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-- write 52 C0
-- write 54 82
-
-
+- I2C:
+	write to 0x42 ack data: 0x00 
+	write to 0x52 ack data: 0xC0 
+	write to 0x54 ack data: 0xC2 
+	write to 0x40 ack data: 0x00 0x00 0x00			<-- адрес L:M:H
+	write to 0x42 ack data: 0xF0 
+	read to 0x23 ack data: 0x02 0x00 0x59 0x32 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x02 0x01 0x5A 0x00 0x00		<-- данные
+		(максимум 48 байт за раз)
+	write to 0x42 ack data: 0x00 
+	write to 0x52 ack data: 0xC0 
+	write to 0x54 ack data: 0x82 
 
 
 
@@ -204,25 +106,145 @@ writeFuse()
 writeFlash()
 ============
 
-block:
+- I2C:
+	write to 0x42 ack data: 0x00 
+	write to 0x52 ack data: 0xC0 
+	write to 0x54 ack data: 0xC2 
+	write to 0x44 ack data: 0x33 					<-- первый байт данных
+	write to 0x40 ack data: 0x00 0x20 0x00			<-- адрес L:M:H
+	write to 0x43 ack data:							<-- данные без первого байта и в конце 0xFF
+			 0x34 0x35 0x36 0x37 0x38 0x39 0x3A 
+		0x3B 0x3C 0x3D 0x3E 0x3F 0x40 0x41 0x42 
+		0x43 0x44 0x45 0x46 0x47 0x48 0x49 0x4A 
+		0x4B 0x4C 0x4D 0x4E 0x4F 0x50 0x51 0x52 
+		0x53 0x54 0x55 0x56 0x57 0x58 0x59 0x5A 
+		0x5B 0x5C 0x5D 0x5E 0x5F 0x60 0x61 0x62 
+		0xFF 
+	write to 0x52 ack data: 0xC0 
+	write to 0x54 ack data: 0x82 
 
-- write 42 00
-- write 52 C0
-- write 54 C2
-- write 44 02		<-- первый байт данных
-- write 40 00 00 00	<-- адрес
-- write 43
-	00 59 32 00 00 00 00  00 00 00 32 00 00 00 00 		<-- данные (48 байт)
- 00 00 00 32 00 00 00 00  00 00 00 32 00 00 00 00 
- 00 00 00 32 00 00 00 00  00 00 00 32 00 00 00 00 FF
-- write 52 C0
-- write 54 C2
+- данные записывает медленно:
+	- клок 167нс
+	- запись одного байта - 55.45us
+	- паузы после бита:
+		- 0 375ns
+		- 1 5.375us
+		- 2 10.375us
+		- 3 30.417us
+		- 4 1.375us
+		- 5 5.417us
+		- 6 375ns
+		- 7 333ns
 
-- wait 2ms
+- пауза между блоками 2мс
+- суммарно время записи + пауза = 5мс
 
-...
 
 
-end:
 
-- write 54 82
+writeFuse()
+===========
+
+- I2C:
+	write to 0x42 ack data: 0x00 
+	write to 0x52 ack data: 0xC0 
+	write to 0x54 ack data: 0xC2 
+	
+	write to 0x40 ack data: 0x00 0x42 0x00 			<-- адрес 0x4200
+	write to 0x44 ack data: 0xDE 					<-- первый байт fuse
+	write to 0x42 ack data: 0x88 0x89 0xC9 0xC1 	<-- перед 0xC9 пауза 7мкс, перед 0xC1 пауза 32мкс
+	write to 0x42 ack data: 0x00 
+	
+	write to 0x40 ack data: 0x01 0x42 0x00 
+	write to 0x44 ack data: 0xE3 
+	write to 0x42 ack data: 0x88 0x89 0xC9 0xC1 
+	write to 0x42 ack data: 0x00 
+	
+	write to 0x40 ack data: 0x02 0x42 0x00 
+	write to 0x44 ack data: 0xFF 
+	write to 0x42 ack data: 0x88 0x89 0xC9 0xC1 
+	write to 0x42 ack data: 0x00 
+	
+	write to 0x40 ack data: 0x03 0x42 0x00 
+	write to 0x44 ack data: 0x21 
+	write to 0x42 ack data: 0x88 0x89 0xC9 0xC1 
+	write to 0x42 ack data: 0x00 
+	
+	write to 0x40 ack data: 0x04 0x42 0x00 
+	write to 0x44 ack data: 0x68 
+	write to 0x42 ack data: 0x88 0x89 0xC9 0xC1 
+	write to 0x42 ack data: 0x00 
+	
+	write to 0x40 ack data: 0x05 0x42 0x00 
+	write to 0x44 ack data: 0xE1 
+	write to 0x42 ack data: 0x88 0x89 0xC9 0xC1 
+	write to 0x42 ack data: 0x00 
+	
+	write to 0x40 ack data: 0x06 0x42 0x00 
+	write to 0x44 ack data: 0xFF 
+	write to 0x42 ack data: 0x88 0x89 0xC9 0xC1 
+	write to 0x42 ack data: 0x00 
+	
+	write to 0x40 ack data: 0x07 0x42 0x00 
+	write to 0x44 ack data: 0xFF 
+	write to 0x42 ack data: 0x88 0x89 0xC9 0xC1 
+	write to 0x42 ack data: 0x00 
+	
+	write to 0x40 ack data: 0x08 0x42 0x00 
+	write to 0x44 ack data: 0x05 
+	write to 0x42 ack data: 0x88 0x89 0xC9 0xC1 
+	write to 0x42 ack data: 0x00 
+	
+	write to 0x52 ack data: 0xC0 
+	write to 0x54 ack data: 0x82 
+	
+
+
+
+eraseFlash()
+============
+
+- I2C:
+	write to 0x52 ack data: 0xC1 
+	write to 0x54 ack data: 0x01 
+- ждет 1мс
+- I2C:
+	write to 0x42 ack data: 0x00 
+	write to 0x52 ack data: 0xC0 
+	write to 0x54 ack data: 0xC2 
+	read to 0x2D ack data: 0x51 0xD0 0x05			<-- это checkCPU
+	write to 0x42 ack data: 0x86 
+	write to 0x42 ack data: 0x87 
+- ждет 200мс
+- I2C:
+	write to 0x42 ack data: 0x83 
+- ждет 108мкс
+- I2C:
+	write to 0x42 ack data: 0x00 
+	write to 0x52 ack data: 0xC1 
+	write to 0x54 ack data: 0x03 
+	write to 0x52 ack data: 0xC1 
+	write to 0x54 ack data: 0x03 
+- ждет 1мс
+- I2C:
+	write to 0x52 ack data: 0xC1 
+	write to 0x54 ack data: 0x01 
+- ждет 135мс
+- I2C:
+	write to 0x40 ack data: 0x01 0x42 0x00 			<-- это запись fuse #1
+	write to 0x44 ack data: 0xEF 
+	write to 0x42 ack data: 0x88 0x89 0xC9 0xC1  	<-- перед 0xC9 пауза 7мкс, перед 0xC1 пауза 32мкс
+	write to 0x42 ack data: 0x00 
+	write to 0x52 ack data: 0xC1 
+	write to 0x54 ack data: 0x03 
+	write to 0x52 ack data: 0xC1 
+	write to 0x54 ack data: 0x03 
+- ждет 1мс
+- I2C:
+	write to 0x52 ack data: 0xC1 
+	write to 0x54 ack data: 0x01 
+- ждем 135мс
+	write to 0x52 ack data: 0xC0 
+	write to 0x54 ack data: 0x82 
+	write to 0x52 ack data: 0xC1 
+	write to 0x54 ack data: 0x00 
