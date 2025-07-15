@@ -151,11 +151,11 @@ uint8_t eraseFlash(void)
 
 uint8_t writeFuse(const uint8_t *fuse)
 {
-	uint8_t query[22] ={ 0x15, 0x9C, 0x00, 0x00, 0x00, 0x00, 0x09, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
+	uint8_t query[20] ={ 0x15, 0x9C, 0x00, 0x00, 0x00, 0x00, 0x07, 0x00, 0x00, 0x00, 0x00, 0x00 };
 	static const uint8_t answer[]={ 0x01, 0x41 };
 	uint8_t data[8];
 	
-	memcpy(query+12, fuse, 9);
+	memcpy(query+12, fuse, 7);
 	query[sizeof(query)-1]=0;
 	
 	if ( (qa(query, sizeof(query), data, sizeof(data)) < sizeof(answer)) ||
@@ -272,8 +272,8 @@ int main(int argc, char **argv)
 	int ret=-1;
 	FILE *Fwrite=0, *Fread=0;
 	uint8_t list=0, erase=0, verify=0;
-	uint16_t addr=0, size=0;
-	uint8_t fuse[]={ 0x08, 0xe3, 0xff, 0x00, 0x68, 0xe1, 0xff, 0xff, 0x05};
+	uint32_t addr=0, size=0;
+	uint8_t fuse[]={ 0x08, 0xe3, 0xff, 0x00, 0x68, 0xe1, 0xff };
 	int iap_size=0, isp_size=0;
 	uint8_t write_fuse=0;
 	const char *usb_path=0;
@@ -425,7 +425,7 @@ int main(int argc, char **argv)
 						return -1;
 					}
 					
-					if ( (iap_size < 0) || (iap_size > 160) || ((iap_size%5) != 0) || (isp_size+iap_size > 160) )
+					if ( (iap_size < 0) || (iap_size > 320) || ((iap_size%5) != 0) || (isp_size+iap_size > 320) )
 					{
 						fprintf(stderr, "Incorrect IAP size\n");
 						return -1;
@@ -455,15 +455,15 @@ int main(int argc, char **argv)
 		return -1;
 	}
 	
-	if (addr >= 16384)
+	if (addr >= 32768)
 	{
 		fprintf(stderr, "Bad address\n");
 		return -1;
 	}
 	
-	if (size == 0) size=16384-addr;
+	if (size == 0) size=32768-addr;
 	
-	if ( (size == 0) || (addr+size > 16384) )
+	if ( (size == 0) || (addr+size > 32768) )
 	{
 		fprintf(stderr, "Bad size\n");
 		return -1;
@@ -529,14 +529,16 @@ int main(int argc, char **argv)
 	if (write_fuse)
 	{
 		const uint8_t isp_tab[]={0xf6, 0xd6, 0xb6, 0x96, 0x76, 0x56, 0x36, 0x16, 0xf4, 0xd4, 0xb4, 0x94, 0x74, 0x54, 0x34, 0x14};	// 0-7.5k
-		const uint8_t iap_tab[]={0x41, 0x3f, 0x3d, 0x3b, 0x39, 0x37, 0x35, 0x33, 0x31, 0x2f, 0x2d, 0x2b, 0x29, 0x27, 0x25, 0x23,
-								 0x21, 0x1f, 0x1d, 0x1b, 0x19, 0x17, 0x15, 0x13, 0x11, 0x0f, 0x0d, 0x0b, 0x09, 0x07, 0x05, 0x03, 0x01};	// 0-16k
+		const uint8_t iap_tab[]={0x81, 0x7f, 0x7d, 0x7b, 0x79, 0x77, 0x75, 0x73, 0x71, 0x6f, 0x6d, 0x6b, 0x69, 0x67, 0x65, 0x63,
+								 0x61, 0x5f, 0x5d, 0x5b, 0x59, 0x57, 0x55, 0x53, 0x51, 0x4f, 0x4d, 0x4b, 0x49, 0x47, 0x45, 0x43,
+								 0x41, 0x3f, 0x3d, 0x3b, 0x39, 0x37, 0x35, 0x33, 0x31, 0x2f, 0x2d, 0x2b, 0x29, 0x27, 0x25, 0x23,
+								 0x21, 0x1f, 0x1d, 0x1b, 0x19, 0x17, 0x15, 0x13, 0x11, 0x0f, 0x0d, 0x0b, 0x09, 0x07, 0x05, 0x03, 0x01};	// 0-32k
 		
 		isp_size/=5;
 		iap_size/=5;
 		fuse[0]|=isp_tab[isp_size];
 		fuse[3]|=iap_tab[isp_size+iap_size];
-					
+		
 		printf("Writing FUSE...\n");
 		if (! writeFuse(fuse)) goto done;
 	}
@@ -544,7 +546,7 @@ int main(int argc, char **argv)
 	// Записываем флэш
 	if (Fwrite)
 	{
-		uint8_t data[16384];
+		uint8_t data[32768];
 		int len=fread(data, 1, sizeof(data), Fwrite);
 		fclose(Fwrite);
 		if (size > len) size=len;
@@ -556,7 +558,7 @@ int main(int argc, char **argv)
 		// Проверяем, если надо
 		if (verify)
 		{
-			uint8_t data2[16384];
+			uint8_t data2[32768];
 			printf("Verifying flash...\n");
 			if (! readFlash(addr, data2, size)) goto done;
 			if (memcmp(data, data2, size) != 0)
@@ -570,7 +572,7 @@ int main(int argc, char **argv)
 	// Читаем флэш
 	if (Fread)
 	{
-		uint8_t data[16384];
+		uint8_t data[32768];
 		printf("Reading flash...\n");
 		if (! readFlash(addr, data, size)) goto done;
 		fwrite(data, 1, size, Fread);
